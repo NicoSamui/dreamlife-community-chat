@@ -133,6 +133,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .win-row .who2{font-size:.74rem;color:var(--muted);margin-top:1px}
 .win-row .note{font-size:.82rem;color:var(--ink-2);margin-top:3px;white-space:normal;line-height:1.4}
 .win-cta{margin-bottom:10px}
+.rev-total{font-size:.82rem;color:var(--ink-2);background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.28);border-radius:10px;padding:7px 10px;margin-bottom:10px;text-align:center}
+.rev-total b{color:#0d9488}
 .ms-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
 .ms-opt{display:flex;align-items:center;gap:8px;padding:11px;border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.5);cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-2);transition:.13s}
 .ms-opt:hover{background:#fff}
@@ -480,6 +482,27 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
       </div>
     </div>
   </div>
+
+  <!-- Neuer Umsatz -->
+  <div class="glass modal" id="winRevModal" style="display:none">
+    <div class="modal-head"><h2>Neuer Umsatz 💶</h2></div>
+    <div class="modal-body">
+      <p class="note">Trag deinen Umsatz ein — er erscheint im <b>Erfolge</b>-Feed und feuert die Community an.</p>
+      <label class="fl">Betrag (€)</label>
+      <input class="input" id="revAmount" type="number" inputmode="numeric" min="1" placeholder="z.B. 1500">
+      <label class="fl">Art</label>
+      <div class="ms-grid" id="revKind">
+        <div class="ms-opt sel" data-kind="setup"><span class="e">⚡</span> Setup (einmalig)</div>
+        <div class="ms-opt" data-kind="retainer"><span class="e">🔁</span> Retainer (mtl.)</div>
+      </div>
+      <label class="fl">Kurze Nachricht (optional)</label>
+      <input class="input" id="revNote" placeholder="z.B. Neuer Kunde im Coaching" maxlength="140">
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-block" id="revCancel">Abbrechen</button>
+        <button class="btn btn-primary btn-block" id="revPost">Posten 🎉</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -705,10 +728,16 @@ function renderList(){
       };
     });
   } else if(state.tab==="wins"){
-    let h=`<button class="btn btn-primary btn-block win-cta" id="winCta">🎉 Erfolg posten</button>`;
+    const total = state.wins.filter(w=>w.milestone==='umsatz').reduce((s,w)=>s+(Number(w.amount)||0),0);
+    let h=`<div class="win-cta" style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="flex:1" id="winCta">🎉 Erfolg</button>
+        <button class="btn btn-primary" style="flex:1" id="winRevCta">💶 Umsatz</button>
+      </div>`;
+    if(total>0) h+=`<div class="rev-total">Community-Umsatz gesamt: <b>${esc(fmtEuro(total))}</b></div>`;
     h += state.wins.length ? state.wins.map(rowWin).join("") : emptyList("Noch keine Erfolge","Sei der Erste — teile deinen ersten Win!");
     list.innerHTML=h;
     $("#winCta")?.addEventListener("click", openWinModal);
+    $("#winRevCta")?.addEventListener("click", openRevModal);
   }
 }
 
@@ -1184,14 +1213,18 @@ async function loadReads(){
 
 /* ---- Win-Wall ---- */
 async function loadWins(){
-  const { data }=await db.from("wins").select("id,user_id,milestone,note,created_at,profiles(id,display_name,avatar_url)").order("created_at",{ascending:false}).limit(100);
+  const { data }=await db.from("wins").select("id,user_id,milestone,note,amount,revenue_type,created_at,profiles(id,display_name,avatar_url)").order("created_at",{ascending:false}).limit(100);
   state.wins=data||[];
 }
+function fmtEuro(n){ try{ return new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(Number(n)||0); }catch(e){ return (Number(n)||0)+" €"; } }
 function rowWin(w){
-  const ms=milestoneBy(w.milestone); const p=w.profiles||{display_name:"?"};
+  const p=w.profiles||{display_name:"?"};
+  let emoji, label;
+  if(w.milestone==='umsatz'){ emoji='💶'; label=fmtEuro(w.amount)+(w.revenue_type==='retainer'?' · Retainer (mtl.)':' · Setup'); }
+  else { const ms=milestoneBy(w.milestone); emoji=ms?ms.emoji:'🏆'; label=ms?ms.label:w.milestone; }
   return `<div class="row win-row" style="cursor:default">
-    <div class="win-emoji">${ms?ms.emoji:"🏆"}</div>
-    <div class="meta"><div class="top"><span class="ms">${ms?esc(ms.label):esc(w.milestone)}</span><span class="time">${shortTime(w.created_at)}</span></div>
+    <div class="win-emoji">${emoji}</div>
+    <div class="meta"><div class="top"><span class="ms">${esc(label)}</span><span class="time">${shortTime(w.created_at)}</span></div>
     <div class="who2">${esc(p.display_name)}</div>${w.note?`<div class="note">${esc(w.note)}</div>`:""}</div>
   </div>`;
 }
@@ -1212,6 +1245,20 @@ async function postWin(milestone, note){
   await db.from("profiles").update({badges}).eq("id",state.me.id);
   closeModals();
 }
+function openRevModal(){
+  $("#revAmount").value=""; $("#revNote").value="";
+  let kind="setup";
+  const grid=$("#revKind");
+  grid.querySelectorAll(".ms-opt").forEach(el=>{ el.classList.toggle("sel", el.dataset.kind==="setup"); el.onclick=()=>{ grid.querySelectorAll(".ms-opt").forEach(x=>x.classList.remove("sel")); el.classList.add("sel"); kind=el.dataset.kind; }; });
+  $("#revPost").onclick=()=>{ const amt=parseFloat($("#revAmount").value); if(!amt||amt<=0){ toast("Bitte gültigen Betrag eingeben."); return; } postRevenue(amt, kind, $("#revNote").value.trim()); };
+  $("#revCancel").onclick=closeModals;
+  showModal("winRevModal");
+}
+async function postRevenue(amount, kind, note){
+  const { error }=await db.from("wins").insert({user_id:state.me.id, milestone:"umsatz", amount, revenue_type:kind, note:note||null});
+  if(error){ toast(error.message); return; }
+  closeModals();
+}
 function launchConfetti(){
   if(window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches) return;
   const wrap=$("#confetti"); if(!wrap) return;
@@ -1226,9 +1273,11 @@ function launchConfetti(){
 function onWin(w){
   if(!w) return;
   launchConfetti();
-  const ms=milestoneBy(w.milestone);
   const nm = w.user_id===state.me.id ? "Du" : (((state.directory.find(p=>p.id===w.user_id)||{}).display_name) || ((state.activeMembers[w.user_id]||{}).display_name) || "Jemand");
-  toast("🎉 "+nm+": "+(ms?ms.label:w.milestone));
+  let what;
+  if(w.milestone==='umsatz'){ what="+"+fmtEuro(w.amount)+(w.revenue_type==='retainer'?' (Retainer)':' (Setup)'); }
+  else { const ms=milestoneBy(w.milestone); what=ms?ms.label:w.milestone; }
+  toast("🎉 "+nm+": "+what);
   if(state.tab==="wins") loadWins().then(()=>{ if(state.tab==="wins") renderList(); });
   loadDirectory().then(()=>{ if(state.tab==="members") renderList(); });
 }
