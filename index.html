@@ -487,14 +487,11 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
   <div class="glass modal" id="winRevModal" style="display:none">
     <div class="modal-head"><h2>Neuer Umsatz 💶</h2></div>
     <div class="modal-body">
-      <p class="note">Trag deinen Umsatz ein — er erscheint im <b>Erfolge</b>-Feed und feuert die Community an.</p>
-      <label class="fl">Betrag (€)</label>
-      <input class="input" id="revAmount" type="number" inputmode="numeric" min="1" placeholder="z.B. 1500">
-      <label class="fl">Art</label>
-      <div class="ms-grid" id="revKind">
-        <div class="ms-opt sel" data-kind="setup"><span class="e">⚡</span> Setup (einmalig)</div>
-        <div class="ms-opt" data-kind="retainer"><span class="e">🔁</span> Retainer (mtl.)</div>
-      </div>
+      <p class="note">Trag deinen Umsatz ein — Setup, Retainer oder beides. Er erscheint im <b>Erfolge</b>-Feed und feuert die Community an.</p>
+      <label class="fl">⚡ Setup-Betrag (einmalig)</label>
+      <input class="input" id="revSetup" type="number" inputmode="numeric" min="0" placeholder="z.B. 1500">
+      <label class="fl">🔁 Retainer pro Monat</label>
+      <input class="input" id="revRetainer" type="number" inputmode="numeric" min="0" placeholder="z.B. 800">
       <label class="fl">Kurze Nachricht (optional)</label>
       <input class="input" id="revNote" placeholder="z.B. Neuer Kunde im Coaching" maxlength="140">
       <div style="display:flex;gap:10px;margin-top:20px">
@@ -548,10 +545,10 @@ const state = {
 };
 const REACTIONS = ["👍","❤️","😂"];
 const MILESTONES = [
+  {key:'setting_terminiert',emoji:'📅',label:'Setting terminiert'},
+  {key:'closing_terminiert',emoji:'🎯',label:'Closing terminiert'},
   {key:'erster_kunde',emoji:'🤝',label:'Erster Kunde'},
-  {key:'umsatz_1k',emoji:'💶',label:'1.000€ Umsatz'},
-  {key:'umsatz_5k',emoji:'🚀',label:'5.000€ Umsatz'},
-  {key:'umsatz_10k',emoji:'🏆',label:'10.000€ Umsatz'},
+  {key:'neuer_abschluss',emoji:'🏆',label:'Neuer Abschluss'},
   {key:'gekuendigt',emoji:'✊',label:'Job gekündigt'},
   {key:'ausgewandert',emoji:'🌴',label:'Ausgewandert'}
 ];
@@ -734,12 +731,19 @@ function renderList(){
       };
     });
   } else if(state.tab==="wins"){
-    const total = state.wins.filter(w=>w.milestone==='umsatz').reduce((s,w)=>s+(Number(w.amount)||0),0);
+    const ur=state.wins.filter(w=>w.milestone==='umsatz');
+    const setupSum=ur.reduce((s,w)=>s+(Number(w.amount)||0),0);
+    const mrrSum=ur.reduce((s,w)=>s+(Number(w.amount_monthly)||0),0);
     let h=`<div class="win-cta" style="display:flex;gap:8px">
         <button class="btn btn-primary" style="flex:1" id="winCta">🎉 Erfolg</button>
         <button class="btn btn-primary" style="flex:1" id="winRevCta">💶 Umsatz</button>
       </div>`;
-    if(total>0) h+=`<div class="rev-total">Community-Umsatz gesamt: <b>${esc(fmtEuro(total))}</b></div>`;
+    if(setupSum>0||mrrSum>0){
+      const tp=[];
+      if(setupSum>0) tp.push(`Setup gesamt: <b>${esc(fmtEuro(setupSum))}</b>`);
+      if(mrrSum>0) tp.push(`MRR: <b>${esc(fmtEuro(mrrSum))}/Mt.</b>`);
+      h+=`<div class="rev-total">${tp.join(" · ")}</div>`;
+    }
     h += state.wins.length ? state.wins.map(rowWin).join("") : emptyList("Noch keine Erfolge","Sei der Erste — teile deinen ersten Win!");
     list.innerHTML=h;
     $("#winCta")?.addEventListener("click", openWinModal);
@@ -1219,14 +1223,21 @@ async function loadReads(){
 
 /* ---- Win-Wall ---- */
 async function loadWins(){
-  const { data }=await db.from("wins").select("id,user_id,milestone,note,amount,revenue_type,created_at,profiles(id,display_name,avatar_url)").order("created_at",{ascending:false}).limit(100);
+  const { data }=await db.from("wins").select("id,user_id,milestone,note,amount,amount_monthly,revenue_type,created_at,profiles(id,display_name,avatar_url)").order("created_at",{ascending:false}).limit(100);
   state.wins=data||[];
 }
 function fmtEuro(n){ try{ return new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(Number(n)||0); }catch(e){ return (Number(n)||0)+" €"; } }
 function rowWin(w){
   const p=w.profiles||{display_name:"?"};
   let emoji, label;
-  if(w.milestone==='umsatz'){ emoji='💶'; label=fmtEuro(w.amount)+(w.revenue_type==='retainer'?' · Retainer (mtl.)':' · Setup'); }
+  if(w.milestone==='umsatz'){
+    emoji='💶';
+    const s=Number(w.amount)||0, m=Number(w.amount_monthly)||0;
+    const parts=[];
+    if(s>0) parts.push(fmtEuro(s)+" Setup");
+    if(m>0) parts.push(fmtEuro(m)+"/Mt. Retainer");
+    label = parts.join(" + ") || "Umsatz";
+  }
   else { const ms=milestoneBy(w.milestone); emoji=ms?ms.emoji:'🏆'; label=ms?ms.label:w.milestone; }
   return `<div class="row win-row" style="cursor:default">
     <div class="win-emoji">${emoji}</div>
@@ -1252,16 +1263,24 @@ async function postWin(milestone, note){
   closeModals();
 }
 function openRevModal(){
-  $("#revAmount").value=""; $("#revNote").value="";
-  let kind="setup";
-  const grid=$("#revKind");
-  grid.querySelectorAll(".ms-opt").forEach(el=>{ el.classList.toggle("sel", el.dataset.kind==="setup"); el.onclick=()=>{ grid.querySelectorAll(".ms-opt").forEach(x=>x.classList.remove("sel")); el.classList.add("sel"); kind=el.dataset.kind; }; });
-  $("#revPost").onclick=()=>{ const amt=parseFloat($("#revAmount").value); if(!amt||amt<=0){ toast("Bitte gültigen Betrag eingeben."); return; } postRevenue(amt, kind, $("#revNote").value.trim()); };
+  $("#revSetup").value=""; $("#revRetainer").value=""; $("#revNote").value="";
+  $("#revPost").onclick=()=>{
+    const s=parseFloat($("#revSetup").value)||0;
+    const m=parseFloat($("#revRetainer").value)||0;
+    if(s<=0 && m<=0){ toast("Bitte Setup- oder Retainer-Betrag eingeben."); return; }
+    postRevenue(s, m, $("#revNote").value.trim());
+  };
   $("#revCancel").onclick=closeModals;
   showModal("winRevModal");
 }
-async function postRevenue(amount, kind, note){
-  const { error }=await db.from("wins").insert({user_id:state.me.id, milestone:"umsatz", amount, revenue_type:kind, note:note||null});
+async function postRevenue(setup, monthly, note){
+  const type = (setup>0 && monthly>0) ? "both" : (monthly>0 ? "retainer" : "setup");
+  const { error }=await db.from("wins").insert({
+    user_id:state.me.id, milestone:"umsatz",
+    amount: setup>0?setup:null,
+    amount_monthly: monthly>0?monthly:null,
+    revenue_type:type, note:note||null
+  });
   if(error){ toast(error.message); return; }
   closeModals();
 }
@@ -1281,7 +1300,11 @@ function onWin(w){
   launchConfetti();
   const nm = w.user_id===state.me.id ? "Du" : (((state.directory.find(p=>p.id===w.user_id)||{}).display_name) || ((state.activeMembers[w.user_id]||{}).display_name) || "Jemand");
   let what;
-  if(w.milestone==='umsatz'){ what="+"+fmtEuro(w.amount)+(w.revenue_type==='retainer'?' (Retainer)':' (Setup)'); }
+  if(w.milestone==='umsatz'){
+    const s=Number(w.amount)||0, m=Number(w.amount_monthly)||0;
+    const parts=[]; if(s>0)parts.push("+"+fmtEuro(s)+" Setup"); if(m>0)parts.push("+"+fmtEuro(m)+"/Mt.");
+    what=parts.join(" + ")||"Umsatz";
+  }
   else { const ms=milestoneBy(w.milestone); what=ms?ms.label:w.milestone; }
   toast("🎉 "+nm+": "+what);
   if(state.tab==="wins") loadWins().then(()=>{ if(state.tab==="wins") renderList(); });
