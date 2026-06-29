@@ -22,7 +22,7 @@
 <style>
 :root{
   --bg:#EEF1FC; --bg-2:#F6F8FF;
-  --ink:#080B16; --ink-2:#363F58; --muted:#6B7491; --muted-2:#97A0BC;
+  --ink:#080B16; --ink-2:#363F58; --muted:#6B7491; --muted-2:#7B85A4;
   --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.74); --glass-edge:rgba(255,255,255,.85);
   --c-blue:#5B7CFA; --c-violet:#8B5CF6; --c-cyan:#22D3EE; --c-pink:#F472B6;
   --holo:linear-gradient(115deg,#5B7CFA 0%,#8B5CF6 32%,#22D3EE 64%,#F472B6 100%);
@@ -115,6 +115,15 @@ body{
 .rx-chip.mine{background:rgba(91,124,250,.16);border-color:rgba(91,124,250,.40)}
 .rx-chip .c{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--muted)}
 .pg-join{padding:6px 13px!important;font-size:.78rem!important}
+/* v3 Welle 1: Animationen, Gruppierung, Lösch-Schutz, A11y */
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msg.anim{animation:msgIn .24s cubic-bezier(.22,.61,.36,1)}
+.msg.grouped{margin-top:2px}
+.msg.grouped .who{display:none}
+.del-btn.armed{background:#e11d48;color:#fff;border-color:#e11d48;transform:scale(1.08)}
+@media (hover:none){ .msg-actions{opacity:1} }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, .tab:focus-visible, .sw:focus-visible{outline:2px solid var(--c-violet);outline-offset:2px;border-radius:8px}
+@media (prefers-reduced-motion:reduce){ .msg.anim{animation:none} }
 
 .tabs{display:flex;gap:4px;background:rgba(120,134,180,.10);padding:4px;border-radius:13px}
 .tab{flex:1;text-align:center;font-size:.8rem;font-weight:600;padding:8px 6px;border-radius:10px;color:var(--muted);cursor:pointer;border:0;background:transparent;transition:.15s;font-family:inherit}
@@ -320,18 +329,18 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
     </div>
     <div id="chatView" style="display:none;flex:1;min-height:0;flex-direction:column">
       <div class="chat-head">
-        <button class="back-btn" id="backBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="back-btn" id="backBtn" aria-label="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="m15 18-6-6 6-6"/></svg></button>
         <div class="av s38" id="headAv"></div>
         <div style="min-width:0">
           <div class="title" id="headTitle">…</div>
           <div class="status" id="headStatus"><span class="live"></span><span id="headStatusText"></span></div>
         </div>
-        <button class="icon-btn" id="infoBtn" title="Info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></button>
+        <button class="icon-btn" id="infoBtn" title="Info" aria-label="Chat-Info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></button>
       </div>
       <div class="stream" id="stream"></div>
       <div class="composer">
         <textarea id="composerInput" rows="1" placeholder="Nachricht schreiben…"></textarea>
-        <button class="send" id="sendBtn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
+        <button class="send" id="sendBtn" disabled aria-label="Senden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
       </div>
     </div>
   </main>
@@ -757,28 +766,31 @@ function renderHeader(){
 }
 
 function renderMessages(msgs){
-  const s=$("#stream"); let html=""; let lastDay="";
+  const s=$("#stream"); let html=""; let lastDay=""; let prev=null;
   msgs.forEach(m=>{
     const day=dayLabel(m.created_at);
-    if(day!==lastDay){ html+=`<div class="daysep">${day}</div>`; lastDay=day; }
-    html+=bubble(m);
+    let grouped=false;
+    if(day!==lastDay){ html+=`<div class="daysep">${day}</div>`; lastDay=day; prev=null; }
+    else if(prev && prev.sender_id===m.sender_id && (new Date(m.created_at)-new Date(prev.created_at) < 300000)) grouped=true;
+    html+=bubble(m, grouped);
+    prev=m;
   });
   s.innerHTML = html;
   s.scrollTop = s.scrollHeight;
 }
 
-function bubble(m){
+function bubble(m, grouped){
   const mine=m.sender_id===state.me.id;
   const isGroup = entry()?.conv.type==="group";
   const sender = state.activeMembers[m.sender_id];
-  const who = (!mine && isGroup && sender) ? `<div class="who">${esc(sender.display_name)}</div>` : "";
-  const opts = REACTIONS.map(e=>`<button class="emoji-opt" data-mid="${m.id}" data-emoji="${e}">${e}</button>`).join("");
+  const who = (!grouped && !mine && isGroup && sender) ? `<div class="who">${esc(sender.display_name)}</div>` : "";
+  const opts = REACTIONS.map(e=>`<button class="emoji-opt" data-mid="${m.id}" data-emoji="${e}" aria-label="Mit ${e} reagieren">${e}</button>`).join("");
   const actions = `<div class="msg-actions">
-      <button class="act-btn react-btn" data-mid="${m.id}" title="Reagieren">${reactIcon()}</button>
-      ${mine?`<button class="act-btn del-btn" data-mid="${m.id}" title="Zurückziehen">${trashIcon()}</button>`:""}
+      <button class="act-btn react-btn" data-mid="${m.id}" title="Reagieren" aria-label="Reagieren">${reactIcon()}</button>
+      ${mine?`<button class="act-btn del-btn" data-mid="${m.id}" title="Zurückziehen" aria-label="Nachricht zurückziehen">${trashIcon()}</button>`:""}
       <div class="emoji-pop">${opts}</div>
     </div>`;
-  return `<div class="msg ${mine?'me':'them'}" data-mid="${m.id}">${who}<div class="bubble-wrap"><div class="bubble">${esc(m.body)}</div>${actions}</div><div class="reactions" id="rx-${m.id}">${renderRx(m.id)}</div><div class="t">${shortTime(m.created_at)}</div></div>`;
+  return `<div class="msg ${mine?'me':'them'}${grouped?' grouped':''}" data-mid="${m.id}" data-sender="${esc(m.sender_id)}" data-ts="${esc(m.created_at)}">${who}<div class="bubble-wrap"><div class="bubble">${esc(m.body)}</div>${actions}</div><div class="reactions" id="rx-${m.id}">${renderRx(m.id)}</div><div class="t">${shortTime(m.created_at)}</div></div>`;
 }
 function reactIcon(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>`; }
 function trashIcon(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>`; }
@@ -977,7 +989,11 @@ function onNewMessage(m){
 
 function appendBubble(m){
   const s=$("#stream"); const near = s.scrollHeight - s.scrollTop - s.clientHeight < 120;
-  s.insertAdjacentHTML("beforeend", bubble(m));
+  const all=s.querySelectorAll(".msg"); const last=all[all.length-1];
+  let grouped=false;
+  if(last){ const ps=last.getAttribute("data-sender"), pts=last.getAttribute("data-ts"); if(ps===m.sender_id && pts && (new Date(m.created_at)-new Date(pts) < 300000)) grouped=true; }
+  s.insertAdjacentHTML("beforeend", bubble(m, grouped));
+  const node=s.lastElementChild; if(node) node.classList.add("anim");
   if(near || m.sender_id===state.me.id) s.scrollTop=s.scrollHeight;
 }
 function onDeleteMessage(old){
@@ -1028,11 +1044,16 @@ function unreadCount(x){
 }
 function markRead(convId){ state.reads[convId]=Date.now(); localStorage.setItem("dlc_reads",JSON.stringify(state.reads)); const r=$("#row-"+convId); r&&r.querySelector(".badge")?.remove(); }
 
+function avatarColor(seed){
+  const cols=['linear-gradient(135deg,#6E8BFF,#8B5CF6)','linear-gradient(135deg,#22D3EE,#5B7CFA)','linear-gradient(135deg,#8B5CF6,#F472B6)','linear-gradient(135deg,#34D399,#22D3EE)','linear-gradient(135deg,#F472B6,#FB7185)','linear-gradient(135deg,#5B7CFA,#22D3EE)','linear-gradient(135deg,#A78BFA,#6E8BFF)'];
+  let h=0; const s=String(seed||"?"); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0;
+  return cols[h%cols.length];
+}
 function avatarHtml(obj,size,withDot){
   let inner;
   if(obj && obj.group){ inner=`<div class="ph">${esc(groupInitials(obj.title))}</div>`; }
   else if(obj && obj.avatar_url){ inner=`<img src="${escAttr(obj.avatar_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${esc(initials(obj.display_name))}'}))">`; }
-  else { inner=`<div class="ph">${esc(initials(obj?obj.display_name:''))}</div>`; }
+  else { inner=`<div class="ph" style="background:${avatarColor(obj?(obj.id||obj.display_name):'')}">${esc(initials(obj?obj.display_name:''))}</div>`; }
   return inner + (withDot?'<span class="dot"></span>':'');
 }
 function initials(n){ if(!n) return "?"; const p=n.trim().split(/\s+/); return ((p[0]?.[0]||"")+(p[1]?.[0]||"")).toUpperCase()||"?"; }
@@ -1071,7 +1092,11 @@ function wireStream(){
     const chip=e.target.closest(".rx-chip");
     if(chip){ toggleReaction(chip.dataset.mid, chip.dataset.emoji); return; }
     const del=e.target.closest(".del-btn");
-    if(del){ deleteMessage(del.dataset.mid); return; }
+    if(del){
+      if(del.classList.contains("armed")){ deleteMessage(del.dataset.mid); }
+      else { $$(".del-btn.armed").forEach(b=>{ b.classList.remove("armed"); b.title="Zurückziehen"; }); del.classList.add("armed"); del.title="Nochmal tippen zum Löschen"; setTimeout(()=>{ del.classList.remove("armed"); del.title="Zurückziehen"; }, 3000); }
+      return;
+    }
   };
   document.addEventListener("click",(e)=>{ if(!e.target.closest(".msg-actions")) $$(".emoji-pop.show").forEach(p=>p.classList.remove("show")); });
 }
