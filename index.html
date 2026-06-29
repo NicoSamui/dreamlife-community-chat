@@ -791,8 +791,8 @@ function renderRx(mid){ const r=state.reactions[mid]; if(!r) return ""; let h=""
 function updateRx(mid){ const n=document.getElementById("rx-"+mid); if(n) n.innerHTML=renderRx(mid); }
 async function toggleReaction(mid, emoji){
   const m=state.reactions[mid]=state.reactions[mid]||{}; const set=m[emoji]=m[emoji]||new Set();
-  if(set.has(state.me.id)){ set.delete(state.me.id); updateRx(mid); db.from("message_reactions").delete().eq("message_id",mid).eq("user_id",state.me.id).eq("emoji",emoji); }
-  else { set.add(state.me.id); updateRx(mid); db.from("message_reactions").insert({message_id:mid,user_id:state.me.id,emoji}); }
+  if(set.has(state.me.id)){ set.delete(state.me.id); updateRx(mid); await db.from("message_reactions").delete().eq("message_id",mid).eq("user_id",state.me.id).eq("emoji",emoji); }
+  else { set.add(state.me.id); updateRx(mid); await db.from("message_reactions").insert({message_id:mid,user_id:state.me.id,emoji}); }
 }
 async function deleteMessage(mid){
   document.querySelector(`.msg[data-mid="${mid}"]`)?.remove();
@@ -1000,7 +1000,7 @@ function onProfileChange(p){
 }
 
 function heartbeat(){
-  const beat=()=> db.from("profiles").update({last_seen:new Date().toISOString()}).eq("id",state.me.id);
+  const beat=()=> db.from("profiles").update({last_seen:new Date().toISOString()}).eq("id",state.me.id).then(()=>{},()=>{});
   beat(); setInterval(beat, 60000);
 }
 
