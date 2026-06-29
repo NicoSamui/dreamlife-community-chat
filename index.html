@@ -124,6 +124,42 @@ body{
 @media (hover:none){ .msg-actions{opacity:1} }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, .tab:focus-visible, .sw:focus-visible{outline:2px solid var(--c-violet);outline-offset:2px;border-radius:8px}
 @media (prefers-reduced-motion:reduce){ .msg.anim{animation:none} }
+/* v3 Welle 2: Erfolge/Badges/Konfetti, Antworten, @Mentions */
+.tabs .tab{font-size:.72rem;padding:8px 3px}
+.name-badges{display:inline-flex;gap:2px;vertical-align:middle;margin-left:4px}
+.badge-chip{font-size:.82rem;line-height:1}
+.win-emoji{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;background:var(--glass-strong);border:1px solid var(--line);flex:none}
+.win-row .ms{font-weight:600;color:var(--ink);font-size:.9rem}
+.win-row .who2{font-size:.74rem;color:var(--muted);margin-top:1px}
+.win-row .note{font-size:.82rem;color:var(--ink-2);margin-top:3px;white-space:normal;line-height:1.4}
+.win-cta{margin-bottom:10px}
+.ms-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.ms-opt{display:flex;align-items:center;gap:8px;padding:11px;border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.5);cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-2);transition:.13s}
+.ms-opt:hover{background:#fff}
+.ms-opt.sel{border-color:transparent;background:var(--cta-grad);color:#fff;box-shadow:var(--glow)}
+.ms-opt .e{font-size:1.2rem}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:90;overflow:hidden}
+.confetti{position:absolute;top:-14px;width:9px;height:14px;border-radius:2px;opacity:.95;animation:confFall linear forwards}
+@keyframes confFall{to{transform:translateY(106vh) rotate(680deg)}}
+.reply-bar{display:none;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--line);background:rgba(255,255,255,.5)}
+.reply-bar.show{display:flex}
+.reply-bar .rb-body{flex:1;min-width:0;font-size:.82rem;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reply-bar .rb-body b{color:var(--c-violet)}
+.reply-bar .rb-x{cursor:pointer;color:var(--muted);width:26px;height:26px;border-radius:8px;border:0;background:transparent;flex:none;font-size:1rem}
+.quote{border-left:3px solid var(--c-violet);background:rgba(139,92,246,.08);border-radius:6px;padding:4px 8px;margin-bottom:5px;font-size:.8rem;cursor:pointer;overflow:hidden}
+.quote .qn{color:var(--c-violet);font-weight:600;display:block}
+.quote .qb{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.msg.me .quote{background:rgba(255,255,255,.18);border-left-color:#fff}
+.msg.me .quote .qn{color:#fff}.msg.me .quote .qb{color:rgba(255,255,255,.82)}
+.mention{color:var(--c-violet);font-weight:600}
+.msg.me .mention{color:#fff;text-decoration:underline}
+.mention.me{background:rgba(139,92,246,.18);border-radius:4px;padding:0 3px}
+.msg.me .mention.me{background:rgba(255,255,255,.22)}
+.mention-pop{position:absolute;bottom:calc(100% + 6px);left:14px;right:60px;max-height:190px;overflow-y:auto;background:var(--glass-strong);border:1px solid var(--line);border-radius:14px;box-shadow:var(--glass-shadow);display:none;z-index:7}
+.mention-pop.show{display:block}
+.mention-opt{display:flex;align-items:center;gap:9px;padding:8px 11px;cursor:pointer;font-size:.88rem;color:var(--ink)}
+.mention-opt:hover{background:rgba(139,92,246,.12)}
+.composer{position:relative}
 
 .tabs{display:flex;gap:4px;background:rgba(120,134,180,.10);padding:4px;border-radius:13px}
 .tab{flex:1;text-align:center;font-size:.8rem;font-weight:600;padding:8px 6px;border-radius:10px;color:var(--muted);cursor:pointer;border:0;background:transparent;transition:.15s;font-family:inherit}
@@ -305,6 +341,7 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
         <button class="tab active" data-tab="chats">Chats</button>
         <button class="tab" data-tab="members">Mitglieder</button>
         <button class="tab" data-tab="groups">Gruppen</button>
+        <button class="tab" data-tab="wins">Erfolge</button>
       </div>
       <div class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -338,7 +375,9 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
         <button class="icon-btn" id="infoBtn" title="Info" aria-label="Chat-Info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></button>
       </div>
       <div class="stream" id="stream"></div>
+      <div class="reply-bar" id="replyBar"><div class="rb-body" id="replyBody"></div><button class="rb-x" id="replyCancel" aria-label="Antwort abbrechen">✕</button></div>
       <div class="composer">
+        <div class="mention-pop" id="mentionPop"></div>
         <textarea id="composerInput" rows="1" placeholder="Nachricht schreiben…"></textarea>
         <button class="send" id="sendBtn" disabled aria-label="Senden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
       </div>
@@ -353,6 +392,7 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
     <div class="modal-head"><h2>Dein Profil</h2></div>
     <div class="modal-body">
       <div class="eyebrow"><span class="d"></span> So sehen dich die anderen</div>
+      <div id="profBadges" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:2px 0"></div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin:8px 0 6px">
         <div class="av s72" id="profAv"></div>
         <button class="btn" id="avBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>Foto ändern</button>
@@ -424,9 +464,26 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
       <button class="btn btn-block" id="infoClose" style="margin-top:10px">Schließen</button>
     </div>
   </div>
+
+  <!-- Erfolg posten -->
+  <div class="glass modal" id="winModal" style="display:none">
+    <div class="modal-head"><h2>Erfolg posten 🎉</h2></div>
+    <div class="modal-body">
+      <p class="note">Feier deinen Win mit der Community — er erscheint im <b>Erfolge</b>-Feed und schaltet ein Badge frei.</p>
+      <label class="fl">Meilenstein</label>
+      <div class="ms-grid" id="msGrid"></div>
+      <label class="fl">Kurze Nachricht (optional)</label>
+      <input class="input" id="winNote" placeholder="z.B. Erster Kunde nach 5 Wochen!" maxlength="140">
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-block" id="winCancel">Abbrechen</button>
+        <button class="btn btn-primary btn-block" id="winPost">Posten 🎉</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
+<div id="confetti"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -459,11 +516,22 @@ const state = {
   activeMembers:{},      // id -> profile  (für aktiven Chat)
   onlineIds:new Set(),
   search:"",
-  reads: JSON.parse(localStorage.getItem("dlc_reads")||"{}"),
+  reads: {},             // conv_id -> last_read_at (ISO), aus DB
   reactions:{},          // msgId -> { emoji: Set(userId) }
-  publicGroups:[]
+  publicGroups:[],
+  wins:[],
+  activeMsgs:{},         // id -> {sender_id, body} (aktiver Chat, für Antworten)
+  replyTo:null
 };
 const REACTIONS = ["👍","❤️","😂"];
+const MILESTONES = [
+  {key:'erster_kunde',emoji:'🤝',label:'Erster Kunde'},
+  {key:'umsatz_1k',emoji:'💶',label:'1.000€ Umsatz'},
+  {key:'umsatz_5k',emoji:'🚀',label:'5.000€ Umsatz'},
+  {key:'umsatz_10k',emoji:'🏆',label:'10.000€ Umsatz'},
+  {key:'gekuendigt',emoji:'✊',label:'Job gekündigt'},
+  {key:'ausgewandert',emoji:'🌴',label:'Ausgewandert'}
+];
 
 /* =====================================================================
    1) IDENTITÄT  — aus Learning-Suite-Platzhalter (URL ?uid=&name=&avatar=)
@@ -544,7 +612,8 @@ async function startApp(){
   $("#app").style.display = "grid";
   renderMe();
   wireUI();
-  await Promise.all([ loadDirectory(), loadConversations() ]);
+  await Promise.all([ loadDirectory(), loadReads() ]);
+  await loadConversations();
   render();
   startRealtime();
   heartbeat();
@@ -591,6 +660,8 @@ async function loadConversations(){
   const lastByConv = {}; (msgs||[]).forEach(m=>{ if(!lastByConv[m.conversation_id]) lastByConv[m.conversation_id]=m; });
 
   state.convs = (convs||[]).map(c=>({ conv:c, members:memByConv[c.id]||[], lastMsg:lastByConv[c.id]||null }));
+  const msgsByConv={}; (msgs||[]).forEach(m=>{ (msgsByConv[m.conversation_id]=msgsByConv[m.conversation_id]||[]).push(m); });
+  state.convs.forEach(x=>{ const lr=state.reads[x.conv.id]?new Date(state.reads[x.conv.id]).getTime():0; x.unread=(msgsByConv[x.conv.id]||[]).filter(m=> m.sender_id!==state.me.id && new Date(m.created_at).getTime()>lr).length; });
   if(state.tab==="chats") renderList();
 }
 
@@ -603,6 +674,7 @@ function setTab(t){
   state.tab = t;
   $$(".tab").forEach(b=> b.classList.toggle("active", b.dataset.tab===t));
   if(t==="groups") loadPublicGroups().then(()=>{ if(state.tab==="groups") renderList(); });
+  if(t==="wins") loadWins().then(()=>{ if(state.tab==="wins") renderList(); });
   renderList();
 }
 
@@ -620,7 +692,7 @@ function renderList(){
     if(!dir.length){ list.innerHTML = emptyList("Keine Mitglieder","Sobald sich Mitglieder sichtbar machen, erscheinen sie hier."); return; }
     list.innerHTML = dir.map(rowMember).join("");
     dir.forEach(p=> $("#mem-"+cssId(p.id))?.addEventListener("click", ()=> startDM(p.id)) );
-  } else {
+  } else if(state.tab==="groups"){
     let gs = state.publicGroups.slice();
     if(q) gs = gs.filter(g=> (g.conv.title||"").toLowerCase().includes(q));
     if(!gs.length){ list.innerHTML = emptyList("Keine öffentlichen Gruppen","Erstelle über <b>Neue Gruppe</b> eine öffentliche Gruppe."); return; }
@@ -632,6 +704,11 @@ function renderList(){
         if(g.memberIds.includes(state.me.id)){ setTab("chats"); await loadConversations(); openConversation(g.conv.id); }
       };
     });
+  } else if(state.tab==="wins"){
+    let h=`<button class="btn btn-primary btn-block win-cta" id="winCta">🎉 Erfolg posten</button>`;
+    h += state.wins.length ? state.wins.map(rowWin).join("") : emptyList("Noch keine Erfolge","Sei der Erste — teile deinen ersten Win!");
+    list.innerHTML=h;
+    $("#winCta")?.addEventListener("click", openWinModal);
   }
 }
 
@@ -654,7 +731,7 @@ function rowMember(p){
   const online = state.onlineIds.has(p.id);
   return `<div class="row" id="mem-${cssId(p.id)}">
     <div class="av s44 ${online?'online':''}">${avatarHtml(p,'s44',true)}</div>
-    <div class="meta"><div class="top"><span class="title">${esc(p.display_name)}</span></div>
+    <div class="meta"><div class="top"><span class="title">${esc(p.display_name)}</span>${nameBadges(p)}</div>
     <div class="preview">${online?'<span style="color:var(--ok)">● Online</span>':'Tippen zum Schreiben'}</div></div>
   </div>`;
 }
@@ -744,7 +821,8 @@ async function openConversation(convId){
 async function loadMessages(convId){
   const { data } = await db.from("messages").select("*").eq("conversation_id", convId).order("created_at").limit(500);
   const msgs = data || [];
-  state.reactions = {};
+  state.reactions = {}; state.activeMsgs={};
+  msgs.forEach(m=> state.activeMsgs[m.id]={sender_id:m.sender_id, body:m.body});
   await loadReactions(msgs.map(m=>m.id));
   return msgs;
 }
@@ -784,13 +862,20 @@ function bubble(m, grouped){
   const isGroup = entry()?.conv.type==="group";
   const sender = state.activeMembers[m.sender_id];
   const who = (!grouped && !mine && isGroup && sender) ? `<div class="who">${esc(sender.display_name)}</div>` : "";
+  let quote="";
+  if(m.reply_to){
+    const ref=state.activeMsgs[m.reply_to];
+    const rn=ref?((state.activeMembers[ref.sender_id]||{}).display_name||(ref.sender_id===state.me.id?"Du":"…")):"";
+    quote=`<div class="quote" data-goto="${m.reply_to}"><span class="qn">${ref?esc(rn):"Nachricht"}</span><span class="qb">${ref?esc(ref.body).slice(0,80):"Original nicht geladen"}</span></div>`;
+  }
   const opts = REACTIONS.map(e=>`<button class="emoji-opt" data-mid="${m.id}" data-emoji="${e}" aria-label="Mit ${e} reagieren">${e}</button>`).join("");
   const actions = `<div class="msg-actions">
+      <button class="act-btn reply-btn" data-mid="${m.id}" title="Antworten" aria-label="Antworten">${replyIcon()}</button>
       <button class="act-btn react-btn" data-mid="${m.id}" title="Reagieren" aria-label="Reagieren">${reactIcon()}</button>
       ${mine?`<button class="act-btn del-btn" data-mid="${m.id}" title="Zurückziehen" aria-label="Nachricht zurückziehen">${trashIcon()}</button>`:""}
       <div class="emoji-pop">${opts}</div>
     </div>`;
-  return `<div class="msg ${mine?'me':'them'}${grouped?' grouped':''}" data-mid="${m.id}" data-sender="${esc(m.sender_id)}" data-ts="${esc(m.created_at)}">${who}<div class="bubble-wrap"><div class="bubble">${esc(m.body)}</div>${actions}</div><div class="reactions" id="rx-${m.id}">${renderRx(m.id)}</div><div class="t">${shortTime(m.created_at)}</div></div>`;
+  return `<div class="msg ${mine?'me':'them'}${grouped?' grouped':''}" data-mid="${m.id}" data-sender="${esc(m.sender_id)}" data-ts="${esc(m.created_at)}">${who}<div class="bubble-wrap"><div class="bubble">${quote}${renderBody(m.body)}</div>${actions}</div><div class="reactions" id="rx-${m.id}">${renderRx(m.id)}</div><div class="t">${shortTime(m.created_at)}</div></div>`;
 }
 function reactIcon(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>`; }
 function trashIcon(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>`; }
@@ -817,7 +902,10 @@ async function sendMessage(){
   if(!body || !state.activeConvId) return;
   ta.value=""; autoGrow(ta); $("#sendBtn").disabled=true;
   const convId=state.activeConvId;
-  const { error } = await db.from("messages").insert({conversation_id:convId, sender_id:state.me.id, body});
+  const payload={conversation_id:convId, sender_id:state.me.id, body};
+  if(state.replyTo) payload.reply_to=state.replyTo.id;
+  clearReply();
+  const { error } = await db.from("messages").insert(payload);
   if(error){ toast(error.message); ta.value=body; return; }
   await db.from("conversations").update({last_message_at:new Date().toISOString()}).eq("id",convId);
   // Anzeige passiert über Realtime (auch für mich) -> keine Doppel-Bubble
@@ -911,6 +999,7 @@ function openInfo(){
 function openProfile(){
   $("#profAv").innerHTML = avatarHtml(state.me,"s72",false);
   $("#profName").value = state.me.display_name;
+  $("#profBadges").innerHTML = (state.me.badges&&state.me.badges.length) ? state.me.badges.map(function(b){var m=milestoneBy(b);return m?'<span class="badge-chip" title="'+escAttr(m.label)+'" style="font-size:1.4rem">'+m.emoji+'</span>':'';}).join("") : '<span style="font-size:.78rem;color:var(--muted)">Noch keine Badges — poste deinen ersten Erfolg!</span>';
   $("#visSw").classList.toggle("on", state.me.is_visible!==false);
   // WhatsApp (privat, nicht aus DB lesbar -> Felder leer, Status aus localStorage)
   $("#waPhone").value=""; $("#waKey").value="";
@@ -967,6 +1056,7 @@ function startRealtime(){
     .on("postgres_changes",{event:"DELETE",schema:"public",table:"conversations"}, p=>{ if(p.old && p.old.id===state.activeConvId) clearActive(); clearTimeout(refreshT); refreshT=setTimeout(()=>{ loadConversations(); if(state.tab==="groups") loadPublicGroups().then(renderList); },250); })
     .on("postgres_changes",{event:"UPDATE",schema:"public",table:"profiles"}, p=> onProfileChange(p.new))
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"profiles"}, ()=> loadDirectory().then(()=>{ if(state.tab==="members") renderList(); }))
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"wins"}, p=> onWin(p.new))
     .subscribe();
 
   const pres = db.channel("dlc-presence",{ config:{ presence:{ key: state.me.id } } });
@@ -981,6 +1071,7 @@ function startRealtime(){
 function onNewMessage(m){
   // aktiver Chat -> Bubble anhängen
   if(m.conversation_id===state.activeConvId){
+    state.activeMsgs[m.id]={sender_id:m.sender_id, body:m.body};
     appendBubble(m); markRead(m.conversation_id);
   }
   // Chat-Liste auffrischen (gedrosselt)
@@ -1035,14 +1126,13 @@ function isConvOnline(x){
   if(x.conv.type==="group") return (x.members||[]).some(m=> m.id!==state.me.id && state.onlineIds.has(m.id));
   const o=otherMember(x); return o ? state.onlineIds.has(o.id) : false;
 }
-function unreadCount(x){
-  if(x.conv.id===state.activeConvId) return 0;
-  const last = x.lastMsg; if(!last) return 0;
-  if(last.sender_id===state.me.id) return 0;
-  const read = state.reads[x.conv.id] || 0;
-  return new Date(last.created_at).getTime() > read ? 1 : 0;
+function unreadCount(x){ if(x.conv.id===state.activeConvId) return 0; return x.unread||0; }
+function markRead(convId){
+  state.reads[convId]=new Date().toISOString();
+  const e=state.convs.find(x=>x.conv.id===convId); if(e) e.unread=0;
+  const r=$("#row-"+convId); r&&r.querySelector(".badge")?.remove();
+  db.from("conversation_reads").upsert({conversation_id:convId,user_id:state.me.id,last_read_at:state.reads[convId]},{onConflict:"conversation_id,user_id"}).then(()=>{},()=>{});
 }
-function markRead(convId){ state.reads[convId]=Date.now(); localStorage.setItem("dlc_reads",JSON.stringify(state.reads)); const r=$("#row-"+convId); r&&r.querySelector(".badge")?.remove(); }
 
 function avatarColor(seed){
   const cols=['linear-gradient(135deg,#6E8BFF,#8B5CF6)','linear-gradient(135deg,#22D3EE,#5B7CFA)','linear-gradient(135deg,#8B5CF6,#F472B6)','linear-gradient(135deg,#34D399,#22D3EE)','linear-gradient(135deg,#F472B6,#FB7185)','linear-gradient(135deg,#5B7CFA,#22D3EE)','linear-gradient(135deg,#A78BFA,#6E8BFF)'];
@@ -1081,10 +1171,127 @@ function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("sh
 function showModal(id){ $$(".modal").forEach(m=>m.style.display="none"); $("#"+id).style.display="flex"; $("#overlay").classList.add("show"); }
 function closeModals(){ $("#overlay").classList.remove("show"); }
 
+/* =====================================================================
+   v3: Erfolge/Badges · Antworten · @Mentions · Unread-Helfer
+   ===================================================================== */
+function milestoneBy(k){ return MILESTONES.find(m=>m.key===k); }
+function nameBadges(p){ if(!p||!p.badges||!p.badges.length) return ""; return `<span class="name-badges">`+p.badges.map(b=>{const m=milestoneBy(b);return m?`<span class="badge-chip" title="${escAttr(m.label)}">${m.emoji}</span>`:"";}).join("")+`</span>`; }
+
+async function loadReads(){
+  const { data }=await db.from("conversation_reads").select("conversation_id,last_read_at").eq("user_id",state.me.id);
+  const m={}; (data||[]).forEach(r=> m[r.conversation_id]=r.last_read_at); state.reads=m;
+}
+
+/* ---- Win-Wall ---- */
+async function loadWins(){
+  const { data }=await db.from("wins").select("id,user_id,milestone,note,created_at,profiles(id,display_name,avatar_url)").order("created_at",{ascending:false}).limit(100);
+  state.wins=data||[];
+}
+function rowWin(w){
+  const ms=milestoneBy(w.milestone); const p=w.profiles||{display_name:"?"};
+  return `<div class="row win-row" style="cursor:default">
+    <div class="win-emoji">${ms?ms.emoji:"🏆"}</div>
+    <div class="meta"><div class="top"><span class="ms">${ms?esc(ms.label):esc(w.milestone)}</span><span class="time">${shortTime(w.created_at)}</span></div>
+    <div class="who2">${esc(p.display_name)}</div>${w.note?`<div class="note">${esc(w.note)}</div>`:""}</div>
+  </div>`;
+}
+function openWinModal(){
+  const grid=$("#msGrid"); let sel=null;
+  grid.innerHTML=MILESTONES.map(m=>`<div class="ms-opt" data-key="${m.key}"><span class="e">${m.emoji}</span> ${esc(m.label)}</div>`).join("");
+  grid.querySelectorAll(".ms-opt").forEach(el=> el.onclick=()=>{ grid.querySelectorAll(".ms-opt").forEach(x=>x.classList.remove("sel")); el.classList.add("sel"); sel=el.dataset.key; });
+  $("#winNote").value="";
+  $("#winPost").onclick=()=>{ if(!sel){ toast("Wähle einen Meilenstein."); return; } postWin(sel, $("#winNote").value.trim()); };
+  $("#winCancel").onclick=closeModals;
+  showModal("winModal");
+}
+async function postWin(milestone, note){
+  const { error }=await db.from("wins").insert({user_id:state.me.id, milestone, note:note||null});
+  if(error){ toast(error.message); return; }
+  const badges=Array.from(new Set([...(state.me.badges||[]), milestone]));
+  state.me.badges=badges;
+  await db.from("profiles").update({badges}).eq("id",state.me.id);
+  closeModals();
+}
+function launchConfetti(){
+  if(window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  const wrap=$("#confetti"); if(!wrap) return;
+  const cols=["#6E8BFF","#8B5CF6","#22D3EE","#F472B6","#34D399","#FBBF24"];
+  for(let i=0;i<90;i++){
+    const c=document.createElement("div"); c.className="confetti";
+    c.style.left=(Math.random()*100)+"vw"; c.style.background=cols[i%cols.length];
+    const dur=2.2+Math.random()*1.6; c.style.animationDuration=dur+"s"; c.style.animationDelay=(Math.random()*0.3)+"s";
+    wrap.appendChild(c); setTimeout(()=>c.remove(), (dur+0.6)*1000);
+  }
+}
+function onWin(w){
+  if(!w) return;
+  launchConfetti();
+  const ms=milestoneBy(w.milestone);
+  const nm = w.user_id===state.me.id ? "Du" : (((state.directory.find(p=>p.id===w.user_id)||{}).display_name) || ((state.activeMembers[w.user_id]||{}).display_name) || "Jemand");
+  toast("🎉 "+nm+": "+(ms?ms.label:w.milestone));
+  if(state.tab==="wins") loadWins().then(()=>{ if(state.tab==="wins") renderList(); });
+  loadDirectory().then(()=>{ if(state.tab==="members") renderList(); });
+}
+
+/* ---- Antworten ---- */
+function replyIcon(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>`; }
+function setReply(mid){
+  const ref=state.activeMsgs[mid]; if(!ref) return;
+  const nm=(state.activeMembers[ref.sender_id]||{}).display_name || (ref.sender_id===state.me.id?"dir selbst":"…");
+  state.replyTo={id:mid, name:nm, body:ref.body};
+  $("#replyBody").innerHTML=`Antwort an <b>${esc(nm)}</b>: ${esc(ref.body).slice(0,70)}`;
+  $("#replyBar").classList.add("show");
+  $("#composerInput").focus();
+}
+function clearReply(){ state.replyTo=null; $("#replyBar").classList.remove("show"); $("#replyBody").innerHTML=""; }
+
+/* ---- @Mentions ---- */
+function handleMention(ta){
+  const pop=$("#mentionPop");
+  const upto=ta.value.slice(0, ta.selectionStart);
+  const mres=/(^|\s)@([^\s@]*)$/.exec(upto);
+  if(!mres || !state.activeConvId){ pop.classList.remove("show"); return; }
+  const term=mres[2].toLowerCase();
+  const members=Object.values(state.activeMembers).filter(p=> p.id!==state.me.id && (p.display_name||"").toLowerCase().includes(term));
+  if(!members.length){ pop.classList.remove("show"); return; }
+  pop.innerHTML=members.slice(0,6).map(p=>`<div class="mention-opt" data-name="${escAttr(p.display_name)}"><div class="av s32">${avatarHtml(p,'s32',false)}</div>${esc(p.display_name)}</div>`).join("");
+  pop.classList.add("show");
+  pop.querySelectorAll(".mention-opt").forEach(el=> el.onmousedown=(ev)=>{ ev.preventDefault(); insertMention(ta, el.dataset.name); });
+}
+function insertMention(ta, name){
+  const pos=ta.selectionStart;
+  const upto=ta.value.slice(0,pos).replace(/@([^\s@]*)$/, "@"+name+" ");
+  const rest=ta.value.slice(pos);
+  ta.value=upto+rest;
+  $("#mentionPop").classList.remove("show");
+  ta.focus(); autoGrow(ta); ta.setSelectionRange(upto.length, upto.length);
+  $("#sendBtn").disabled=!ta.value.trim();
+}
+function renderBody(text){
+  const names=Object.values(state.activeMembers).map(p=>p.display_name).filter(Boolean).sort((a,b)=>b.length-a.length);
+  let t=String(text==null?"":text); const marks=[];
+  names.forEach(n=>{
+    const token="@"+n; let idx;
+    while((idx=t.indexOf(token))!==-1){
+      const cls=(state.me && n===state.me.display_name)?"mention me":"mention";
+      const ph="@@MNT"+marks.length+"@@";
+      marks.push(`<span class="${cls}">@${esc(n)}</span>`);
+      t=t.slice(0,idx)+ph+t.slice(idx+token.length);
+    }
+  });
+  let h=esc(t);
+  marks.forEach((mk,i)=>{ h=h.split("@@MNT"+i+"@@").join(mk); });
+  return h;
+}
+
 /* ---------- Stream: Reaktionen + Löschen (Event-Delegation) ---------- */
 function wireStream(){
   const s=$("#stream");
   s.onclick=(e)=>{
+    const reply=e.target.closest(".reply-btn");
+    if(reply){ setReply(reply.dataset.mid); return; }
+    const goN=e.target.closest(".quote");
+    if(goN){ const t=document.querySelector(`.msg[data-mid="${goN.dataset.goto}"]`); if(t){ t.scrollIntoView({behavior:"smooth",block:"center"}); t.classList.remove("anim"); void t.offsetWidth; t.classList.add("anim"); } return; }
     const react=e.target.closest(".react-btn");
     if(react){ const pop=react.parentElement.querySelector(".emoji-pop"); $$(".emoji-pop.show").forEach(p=>{ if(p!==pop) p.classList.remove("show"); }); pop.classList.toggle("show"); return; }
     const opt=e.target.closest(".emoji-opt");
@@ -1119,9 +1326,11 @@ function wireUI(){
   wireProfile();
 
   const ta=$("#composerInput"), send=$("#sendBtn");
-  ta.oninput = ()=>{ autoGrow(ta); send.disabled = !ta.value.trim(); };
-  ta.onkeydown = e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendMessage(); } };
+  ta.oninput = ()=>{ autoGrow(ta); send.disabled = !ta.value.trim(); handleMention(ta); };
+  ta.onkeydown = e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); $("#mentionPop").classList.remove("show"); sendMessage(); } };
+  ta.onblur = ()=> setTimeout(()=>$("#mentionPop").classList.remove("show"), 150);
   send.onclick = sendMessage;
+  $("#replyCancel").onclick = clearReply;
 }
 
 /* ---------- los geht's ---------- */
