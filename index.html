@@ -72,6 +72,18 @@ body{
 .me-row .name{font-weight:600;color:var(--ink);font-size:.92rem;line-height:1.1}
 .me-row .sub{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:3px;display:flex;align-items:center;gap:5px}
 .gear{margin-left:auto;color:var(--muted);width:18px;height:18px;flex:none}
+.vis-pill{margin-top:4px;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.55);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;padding:3px 9px;border-radius:999px;cursor:pointer;transition:.15s}
+.vis-pill:hover{background:#fff;color:var(--ink-2)}
+.vis-pill .vdot{width:7px;height:7px;border-radius:50%;background:var(--muted-2);transition:.15s}
+.vis-pill.on{color:var(--ink-2)}
+.vis-pill.on .vdot{background:var(--ok);box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.hr-soft{height:1px;background:var(--line);margin:20px 0 4px}
+.note{font-size:.78rem;color:var(--muted);line-height:1.5;margin:0}
+.note b{color:var(--ink-2)}
+.note .num{font-family:'JetBrains Mono',monospace;background:rgba(120,134,180,.12);padding:1px 6px;border-radius:6px;color:var(--c-violet);white-space:nowrap}
+.steps{margin:8px 0 0;padding-left:18px;font-size:.8rem;color:var(--muted);line-height:1.6}
+.steps li{margin-bottom:3px}
+.steps b{color:var(--ink-2)}
 
 .tabs{display:flex;gap:4px;background:rgba(120,134,180,.10);padding:4px;border-radius:13px}
 .tab{flex:1;text-align:center;font-size:.8rem;font-weight:600;padding:8px 6px;border-radius:10px;color:var(--muted);cursor:pointer;border:0;background:transparent;transition:.15s;font-family:inherit}
@@ -245,7 +257,7 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
         <div class="av s44" id="meAv"></div>
         <div style="min-width:0">
           <div class="name" id="meName">…</div>
-          <div class="sub"><span id="meVis">sichtbar</span></div>
+          <button class="vis-pill on" id="visPill" type="button" title="Sichtbarkeit umschalten"><span class="vdot"></span><span id="meVis">sichtbar</span></button>
         </div>
         <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H2a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H22a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </div>
@@ -311,6 +323,25 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
         <div class="lab"><b>Im Mitglieder-Verzeichnis sichtbar</b>Andere können dich finden &amp; anschreiben</div>
         <div class="sw" id="visSw"></div>
       </div>
+
+      <div class="hr-soft"></div>
+      <div class="eyebrow"><span class="d"></span> WhatsApp-Benachrichtigung</div>
+      <p class="note">Bekomm eine WhatsApp, wenn dir jemand schreibt — auch wenn der Chat zu ist. Einmalig einrichten:</p>
+      <ol class="steps">
+        <li>Speichere die Nummer <span class="num">+34 623 76 13 63</span> als Kontakt.</li>
+        <li>Schick ihr per WhatsApp: <b>I allow callmebot to send me messages</b></li>
+        <li>Du bekommst einen <b>APIKEY</b> zurück — trag ihn unten ein.</li>
+      </ol>
+      <label class="fl">Deine WhatsApp-Nummer (mit Ländervorwahl)</label>
+      <input class="input" id="waPhone" placeholder="+49170…" autocomplete="off">
+      <label class="fl">CallMeBot API-Key</label>
+      <input class="input" id="waKey" placeholder="z.B. 1234567" autocomplete="off">
+      <div class="toggle">
+        <div class="lab"><b>WhatsApp-Reminder aktiv</b>Nur wenn du gerade offline bist</div>
+        <div class="sw" id="waSw"></div>
+      </div>
+      <p class="note" style="margin-top:8px;font-size:.7rem;color:var(--muted-2)">Nummer &amp; Key bleiben privat — für andere Mitglieder nicht sichtbar.</p>
+
       <div style="display:flex;gap:10px;margin-top:20px">
         <button class="btn btn-block" id="profCancel">Abbrechen</button>
         <button class="btn btn-primary btn-block" id="profSave">Speichern</button>
@@ -473,7 +504,18 @@ async function startApp(){
 function renderMe(){
   $("#meAv").innerHTML = avatarHtml(state.me, "s44", false);
   $("#meName").textContent = state.me.display_name;
-  $("#meVis").textContent = state.me.is_visible===false ? "verborgen" : "sichtbar";
+  const vis = state.me.is_visible!==false;
+  $("#meVis").textContent = vis ? "sichtbar" : "verborgen";
+  $("#visPill").classList.toggle("on", vis);
+}
+
+async function toggleVisibility(){
+  const newVis = (state.me.is_visible===false);   // verborgen -> sichtbar, sonst umgekehrt
+  state.me.is_visible = newVis;
+  renderMe();
+  const { error } = await db.from("profiles").update({ is_visible:newVis }).eq("id", state.me.id);
+  if(error){ toast("Fehler: "+error.message); state.me.is_visible=!newVis; renderMe(); }
+  else toast(newVis ? "Du bist jetzt sichtbar im Verzeichnis." : "Du bist jetzt verborgen.");
 }
 
 /* =====================================================================
@@ -714,10 +756,14 @@ function openProfile(){
   $("#profAv").innerHTML = avatarHtml(state.me,"s72",false);
   $("#profName").value = state.me.display_name;
   $("#visSw").classList.toggle("on", state.me.is_visible!==false);
+  // WhatsApp (privat, nicht aus DB lesbar -> Felder leer, Status aus localStorage)
+  $("#waPhone").value=""; $("#waKey").value="";
+  $("#waSw").classList.toggle("on", localStorage.getItem("dlc_wa_enabled")==="1");
   showModal("profileModal");
 }
 function wireProfile(){
   $("#visSw").onclick = ()=> $("#visSw").classList.toggle("on");
+  $("#waSw").onclick = ()=> $("#waSw").classList.toggle("on");
   $("#avBtn").onclick = ()=> $("#avFile").click();
   $("#avFile").onchange = async (e)=>{
     const file=e.target.files[0]; if(!file) return;
@@ -736,7 +782,15 @@ function wireProfile(){
     const patch={display_name:name, is_visible:vis, avatar_url:state.me.avatar_url||null};
     const { error }=await db.from("profiles").update(patch).eq("id",state.me.id);
     if(error){ toast(error.message); return; }
-    Object.assign(state.me,patch); renderMe(); closeModals(); toast("Profil gespeichert.");
+    Object.assign(state.me,patch);
+    // WhatsApp-Settings privat speichern (leere Felder überschreiben nichts)
+    const waOn=$("#waSw").classList.contains("on");
+    const waPhone=$("#waPhone").value.trim();
+    const waKey=$("#waKey").value.trim();
+    const { error:waErr }=await db.rpc("save_notify_settings",{ p_user_id:state.me.id, p_phone:waPhone||null, p_apikey:waKey||null, p_enabled:waOn });
+    if(waErr) toast("WhatsApp-Setup: "+waErr.message);
+    localStorage.setItem("dlc_wa_enabled", waOn?"1":"0");
+    renderMe(); closeModals(); toast("Profil gespeichert.");
     loadConversations();
   };
   $("#profCancel").onclick = closeModals;
@@ -854,6 +908,7 @@ function wireUI(){
   $$(".tab").forEach(b=> b.onclick=()=> setTab(b.dataset.tab));
   $("#searchInput").oninput = e=>{ state.search=e.target.value; renderList(); };
   $("#meRow").onclick = openProfile;
+  $("#visPill").onclick = (e)=>{ e.stopPropagation(); toggleVisibility(); };
   $("#newGroupBtn").onclick = openGroupModal;
   $("#infoBtn").onclick = openInfo;
   $("#backBtn").onclick = ()=>{ $("#app").classList.remove("show-chat"); };
