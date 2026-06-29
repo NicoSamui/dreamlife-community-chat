@@ -1,0 +1,63 @@
+<!-- ====================================================================
+     DreamLife Community-Chat — Einbett-Code für Learning Suite
+     --------------------------------------------------------------------
+     Diesen kompletten Block in ein "Custom Code / HTML"-Widget in
+     Learning Suite einfügen. Er zieht automatisch:
+       - die User-ID   aus [[USER_ID]]
+       - den Vornamen  aus system.user.firstName
+       - den Nachnamen aus system.user.lastName
+     und baut daraus den Namen "Vorname Nachname".
+
+     Zwei Wege sind eingebaut (es wird automatisch der genommen, der geht):
+       1) JS-API:   customFields.getFieldValue('system.user.firstName')
+       2) Platzhalter: {{system.user.firstName}}  (von LS ersetzt)
+
+     Höhe bei Bedarf unten bei  --chat-height  anpassen.
+     ==================================================================== -->
+
+<div id="dl-chat-mount" style="--chat-height:85vh;width:100%;height:var(--chat-height);min-height:560px;"></div>
+
+<script>
+(function () {
+  // --- 1) Helfer: Wert aus Learning Suite holen ---------------------
+  // Versucht zuerst die JS-API, dann den Template-Platzhalter.
+  function lsField(apiKey, tplValue) {
+    // a) JS-API (falls im Widget verfügbar)
+    try {
+      if (typeof customFields !== "undefined" &&
+          typeof customFields.getFieldValue === "function") {
+        var v = customFields.getFieldValue(apiKey);
+        if (v && String(v).trim()) return String(v).trim();
+      }
+    } catch (e) {}
+    // b) Template-Platzhalter (von LS serverseitig ersetzt).
+    //    Wenn LS ihn NICHT ersetzt hat (steht noch {{...}} drin) -> leer.
+    if (tplValue && !/^\{\{.*\}\}$/.test(tplValue) && !/^\[\[.*\]\]$/.test(tplValue)) {
+      return String(tplValue).trim();
+    }
+    return "";
+  }
+
+  // --- 2) Werte einlesen --------------------------------------------
+  var uid   = "[[USER_ID]]";  // bestehende User-ID (LS ersetzt den Platzhalter)
+  if (/^\[\[.*\]\]$/.test(uid)) uid = "";  // falls nicht ersetzt -> leer
+
+  var first = lsField("system.user.firstName", "{{system.user.firstName}}");
+  var last  = lsField("system.user.lastName",  "{{system.user.lastName}}");
+
+  // --- 3) Chat-URL bauen --------------------------------------------
+  var BASE = "https://dreamlife-chat.netlify.app/";
+  var qs = "?uid="   + encodeURIComponent(uid)
+         + "&first=" + encodeURIComponent(first)
+         + "&last="  + encodeURIComponent(last);
+
+  // --- 4) iframe einsetzen ------------------------------------------
+  var mount = document.getElementById("dl-chat-mount");
+  var ifr = document.createElement("iframe");
+  ifr.src = BASE + qs;
+  ifr.setAttribute("allow", "clipboard-write; camera; microphone");
+  ifr.style.cssText = "width:100%;height:100%;border:0;display:block;border-radius:16px;";
+  mount.innerHTML = "";
+  mount.appendChild(ifr);
+})();
+</script>

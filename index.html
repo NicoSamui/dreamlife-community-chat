@@ -557,7 +557,8 @@ const MILESTONES = [
 ];
 
 /* =====================================================================
-   1) IDENTITÄT  — aus Learning-Suite-Platzhalter (URL ?uid=&name=&avatar=)
+   1) IDENTITÄT  — aus Learning-Suite-Platzhalter
+   URL: ?uid=&name=&avatar=  ODER  ?uid=&first=&last=  (Vor-/Nachname)
    ===================================================================== */
 function readIdentity(){
   const p = new URLSearchParams(location.search);
@@ -565,11 +566,16 @@ function readIdentity(){
   const clean = v => {
     if(!v) return "";
     v = String(v).trim();
-    if(v==="" || /^\[\[.*\]\]$/.test(v) || v==="null" || v==="undefined") return "";
+    // leere LS-Platzhalter rausfiltern: [[...]] und {{...}}
+    if(v==="" || /^\[\[.*\]\]$/.test(v) || /^\{\{.*\}\}$/.test(v) || v==="null" || v==="undefined") return "";
     return v;
   };
   let uid    = clean(w.id     || p.get("uid")    || p.get("user_id") || p.get("id"));
   let name   = clean(w.name   || p.get("name")   || p.get("username"));
+  // Vor-/Nachname aus Learning Suite (system.user.firstName / lastName)
+  let first  = clean(w.firstName || w.first || p.get("first") || p.get("firstName") || p.get("first_name") || p.get("vorname"));
+  let last   = clean(w.lastName  || w.last  || p.get("last")  || p.get("lastName")  || p.get("last_name")  || p.get("nachname"));
+  if(!name) name = (first + " " + last).trim();   // Name aus Vor- + Nachname bauen
   let avatar = clean(w.avatar || p.get("avatar") || p.get("avatar_url"));
   return { uid, name, avatar };
 }
