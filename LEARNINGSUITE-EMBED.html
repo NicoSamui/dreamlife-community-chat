@@ -2,27 +2,29 @@
      DreamLife Community-Chat — Einbett-Code für Learning Suite
      --------------------------------------------------------------------
      Diesen kompletten Block in ein "Custom Code / HTML"-Widget in
-     Learning Suite einfügen. Er zieht automatisch:
-       - die User-ID   aus [[USER_ID]]
-       - den Vornamen  aus system.user.firstName
-       - den Nachnamen aus system.user.lastName
-     und baut daraus den Namen "Vorname Nachname".
+     Learning Suite einfügen.
 
-     Zwei Wege sind eingebaut (es wird automatisch der genommen, der geht):
-       1) JS-API:   customFields.getFieldValue('system.user.firstName')
-       2) Platzhalter: {{system.user.firstName}}  (von LS ersetzt)
+     Zieht automatisch aus dem Mitgliederprofil:
+       - Nutzer-ID    (system.user.id)        -> Login (ohne ID kein Zugang)
+       - Vorname      (system.user.firstName) -> Begrüßung & Name
+       - Nachname     (system.user.lastName)
+       - Dienstleistung (dienstleistung)
+       - Methode        (methode)
+       - Zielgruppe/Branche (zielgruppe-branche)
+       - Angebotssatz   (angebotssatz)
+     Die Business-Felder landen im Profil und stehen jeder KI der App
+     für persönlichere Vorschläge zur Verfügung.
 
-     Höhe bei Bedarf unten bei  --chat-height  anpassen.
+     Es werden automatisch beide Wege probiert: erst die JS-API,
+     dann der Text-Platzhalter. Höhe unten bei --chat-height anpassen.
      ==================================================================== -->
 
 <div id="dl-chat-mount" style="--chat-height:85vh;width:100%;height:var(--chat-height);min-height:560px;"></div>
 
 <script>
 (function () {
-  // --- 1) Helfer: Wert aus Learning Suite holen ---------------------
-  // Versucht zuerst die JS-API, dann den Template-Platzhalter.
-  function lsField(apiKey, tplValue) {
-    // a) JS-API (falls im Widget verfügbar)
+  // Wert aus Learning Suite holen: erst JS-API, dann Text-Platzhalter.
+  function ls(apiKey, tplValue) {
     try {
       if (typeof customFields !== "undefined" &&
           typeof customFields.getFieldValue === "function") {
@@ -30,28 +32,32 @@
         if (v && String(v).trim()) return String(v).trim();
       }
     } catch (e) {}
-    // b) Template-Platzhalter (von LS serverseitig ersetzt).
-    //    Wenn LS ihn NICHT ersetzt hat (steht noch {{...}} drin) -> leer.
+    // Platzhalter nur nehmen, wenn LS ihn ersetzt hat (kein {{...}} / [[...]] mehr).
     if (tplValue && !/^\{\{.*\}\}$/.test(tplValue) && !/^\[\[.*\]\]$/.test(tplValue)) {
       return String(tplValue).trim();
     }
     return "";
   }
 
-  // --- 2) Werte einlesen --------------------------------------------
-  var uid   = "[[USER_ID]]";  // bestehende User-ID (LS ersetzt den Platzhalter)
-  if (/^\[\[.*\]\]$/.test(uid)) uid = "";  // falls nicht ersetzt -> leer
+  var uid   = ls("system.user.id",        "{{system.user.id}}");
+  var first = ls("system.user.firstName",  "{{system.user.firstName}}");
+  var last  = ls("system.user.lastName",   "{{system.user.lastName}}");
+  var dienstleistung = ls("dienstleistung",     "{{dienstleistung}}");
+  var methode        = ls("methode",            "{{methode}}");
+  var zielgruppe     = ls("zielgruppe-branche", "{{zielgruppe-branche}}");
+  var angebotssatz   = ls("angebotssatz",       "{{angebotssatz}}");
 
-  var first = lsField("system.user.firstName", "{{system.user.firstName}}");
-  var last  = lsField("system.user.lastName",  "{{system.user.lastName}}");
-
-  // --- 3) Chat-URL bauen --------------------------------------------
+  // Chat-URL mit allen Parametern bauen (alles URL-codiert).
   var BASE = "https://dreamlife-chat.netlify.app/";
-  var qs = "?uid="   + encodeURIComponent(uid)
-         + "&first=" + encodeURIComponent(first)
-         + "&last="  + encodeURIComponent(last);
+  var qs =
+      "?uid="            + encodeURIComponent(uid) +
+      "&first="          + encodeURIComponent(first) +
+      "&last="           + encodeURIComponent(last) +
+      "&dienstleistung=" + encodeURIComponent(dienstleistung) +
+      "&methode="        + encodeURIComponent(methode) +
+      "&zielgruppe-branche=" + encodeURIComponent(zielgruppe) +
+      "&angebotssatz="   + encodeURIComponent(angebotssatz);
 
-  // --- 4) iframe einsetzen ------------------------------------------
   var mount = document.getElementById("dl-chat-mount");
   var ifr = document.createElement("iframe");
   ifr.src = BASE + qs;

@@ -135,6 +135,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .win-cta{margin-bottom:10px}
 .rev-total{font-size:.82rem;color:var(--ink-2);background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.28);border-radius:10px;padding:7px 10px;margin-bottom:10px;text-align:center}
 .rev-total b{color:#0d9488}
+.biz-line{font-size:.74rem;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.biz-grid{display:flex;flex-direction:column;gap:7px;margin:2px 0 2px}
+.biz-row{display:flex;justify-content:space-between;gap:12px;font-size:.82rem;align-items:baseline}
+.biz-row .k{color:var(--muted);font-weight:600;white-space:nowrap}
+.biz-row .v{color:var(--ink-2);text-align:right;font-weight:600}
+.biz-row .v.empty{color:var(--muted-2);font-weight:400;font-style:italic}
 .ms-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
 .ms-opt{display:flex;align-items:center;gap:8px;padding:11px;border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.5);cursor:pointer;font-size:.84rem;font-weight:600;color:var(--ink-2);transition:.13s}
 .ms-opt:hover{background:#fff}
@@ -314,7 +320,7 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
   </div>
 </div>
 
-<!-- ========== NAME-GATE (Fallback ohne LS-Identität) ========== -->
+<!-- ========== NAME-GATE (Fallback: ID da, aber kein Name) ========== -->
 <div class="center-screen" id="gateScreen">
   <div class="glass card">
     <div class="logo-lg"></div>
@@ -322,6 +328,15 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
     <p>Wie sollen dich die anderen sehen? Wähle deinen Anzeigenamen.</p>
     <input class="input" id="gateName" placeholder="Dein Name" maxlength="40" autocomplete="off">
     <button class="btn btn-primary btn-block" id="gateGo">Chat betreten</button>
+  </div>
+</div>
+
+<!-- ========== KEIN ZUGANG (ohne Learning-Suite-ID) ========== -->
+<div class="center-screen" id="noAccessScreen">
+  <div class="glass card">
+    <div class="logo-lg"></div>
+    <h1>Nur für <span class="holo-text">Mitglieder</span></h1>
+    <p>Die DreamLife-Community öffnest du direkt aus deinem Mitgliederbereich. Logge dich dort ein und starte den Community-Chat von dort — dann bist du automatisch angemeldet.</p>
   </div>
 </div>
 
@@ -363,7 +378,7 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
   <main class="glass panel chat">
     <div class="empty" id="chatEmpty">
       <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-      <h3>Wähle einen Chat</h3>
+      <h3 id="emptyGreet">Wähle einen Chat</h3>
       <p>Öffne einen bestehenden Chat oder starte über den Tab <b>Mitglieder</b> ein neues Gespräch.</p>
     </div>
     <div id="chatView" style="display:none;flex:1;min-height:0;flex-direction:column">
@@ -406,6 +421,11 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
         <div class="lab"><b>Im Mitglieder-Verzeichnis sichtbar</b>Andere können dich finden &amp; anschreiben</div>
         <div class="sw" id="visSw"></div>
       </div>
+
+      <div class="hr-soft"></div>
+      <div class="eyebrow"><span class="d"></span> Dein Business</div>
+      <p class="note">Kommt aus deinem DreamLife-Mitgliederprofil — sichtbar für andere Mitglieder &amp; Basis für persönlichere KI-Vorschläge.</p>
+      <div id="profBiz" class="biz-grid"></div>
 
       <div class="hr-soft"></div>
       <div class="eyebrow"><span class="d"></span> WhatsApp-Benachrichtigung</div>
@@ -574,47 +594,56 @@ function readIdentity(){
   let last   = clean(w.lastName  || w.last  || p.get("last")  || p.get("lastName")  || p.get("last_name")  || p.get("nachname"));
   if(!name) name = (first + " " + last).trim();   // Name aus Vor- + Nachname bauen
   let avatar = clean(w.avatar || p.get("avatar") || p.get("avatar_url"));
-  return { uid, name, avatar };
+  // Business-Eigenschaften aus Learning Suite (für Profil + KI-Personalisierung)
+  let dienstleistung = clean(w.dienstleistung || p.get("dienstleistung"));
+  let methode        = clean(w.methode        || p.get("methode"));
+  let zielgruppe     = clean(w.zielgruppe || w["zielgruppe-branche"] || p.get("zielgruppe") || p.get("zielgruppe-branche") || p.get("branche"));
+  let angebotssatz   = clean(w.angebotssatz   || p.get("angebotssatz"));
+  return { uid, name, first, last, avatar, dienstleistung, methode, zielgruppe, angebotssatz };
 }
+
+const BIZ_KEYS = ["dienstleistung","methode","zielgruppe","angebotssatz"];
+const BIZ_LABELS = [["dienstleistung","Dienstleistung"],["methode","Methode"],["zielgruppe","Zielgruppe / Branche"],["angebotssatz","Angebotssatz"]];
 
 async function boot(){
   const id = readIdentity();
 
-  // Keine LS-User-ID -> stabile lokale ID erzeugen (Fallback / Test)
-  if(!id.uid){
-    let local = localStorage.getItem("dlc_uid");
-    if(!local){ local = "local-" + Math.random().toString(36).slice(2,11); localStorage.setItem("dlc_uid", local); }
-    id.uid = local;
-  }
+  // Ohne Learning-Suite-ID kein Zugang — nur echte Mitglieder kommen rein.
+  if(!id.uid){ showNoAccess(); return; }
   state.identity = id;
+
+  const biz = {}; BIZ_KEYS.forEach(k=>{ if(id[k]) biz[k]=id[k]; });
 
   // Profil schon vorhanden?
   const { data:existing } = await db.from("profiles").select("*").eq("id", id.uid).maybeSingle();
 
   if(existing && existing.display_name){
     state.me = existing;
-    // Name/Avatar aus LS aktualisieren, falls geliefert
+    // Name/Avatar/Business-Felder aus LS aktualisieren, falls geliefert
     const patch = {};
     if(id.name && id.name!==existing.display_name) patch.display_name = id.name;
     if(id.avatar && id.avatar!==existing.avatar_url) patch.avatar_url = id.avatar;
+    BIZ_KEYS.forEach(k=>{ if(biz[k] && biz[k]!==existing[k]) patch[k]=biz[k]; });
     if(Object.keys(patch).length){ await db.from("profiles").update(patch).eq("id", id.uid); Object.assign(state.me, patch); }
     startApp();
   } else if(id.name){
     // LS liefert Namen -> Profil still anlegen
-    state.me = await upsertProfile(id.uid, id.name, id.avatar);
+    state.me = await upsertProfile(id.uid, id.name, id.avatar, biz);
     startApp();
   } else {
-    // Kein Name -> Gate zeigen
-    showGate(id.uid, id.avatar);
+    // ID da, aber kein Name -> Name-Gate (Edge-Case)
+    showGate(id.uid, id.avatar, biz);
   }
 }
 
-function showGate(uid, avatar){
+function showNoAccess(){ const s=$("#noAccessScreen"); if(s) s.classList.add("show"); }
+
+function showGate(uid, avatar, biz){
   const gate = $("#gateScreen"); gate.classList.add("show");
   const go = async ()=>{
     const name = $("#gateName").value.trim();
     if(!name){ $("#gateName").focus(); return; }
-    state.me = await upsertProfile(uid, name, avatar);
+    state.me = await upsertProfile(uid, name, avatar, biz);
     gate.classList.remove("show");
     startApp();
   };
@@ -623,9 +652,10 @@ function showGate(uid, avatar){
   $("#gateName").focus();
 }
 
-async function upsertProfile(id, name, avatar){
+async function upsertProfile(id, name, avatar, biz){
   const row = { id, display_name:name, last_seen:new Date().toISOString() };
   if(avatar) row.avatar_url = avatar;
+  if(biz) BIZ_KEYS.forEach(k=>{ if(biz[k]) row[k]=biz[k]; });
   const { data, error } = await db.from("profiles").upsert(row, { onConflict:"id" }).select().single();
   if(error){ toast("Profil-Fehler: "+error.message); }
   return data || row;
@@ -645,12 +675,18 @@ async function startApp(){
   heartbeat();
 }
 
+function firstName(){
+  const f = state.identity && state.identity.first;
+  return (f || (state.me && state.me.display_name || "").split(" ")[0] || "").trim();
+}
 function renderMe(){
   $("#meAv").innerHTML = avatarHtml(state.me, "s44", false);
   $("#meName").textContent = state.me.display_name;
   const vis = state.me.is_visible!==false;
   $("#meVis").textContent = vis ? "sichtbar" : "verborgen";
   $("#visPill").classList.toggle("on", vis);
+  const g = $("#emptyGreet"); const f = firstName();
+  if(g) g.textContent = f ? ("Hi "+f+" 👋") : "Wähle einen Chat";
 }
 
 async function toggleVisibility(){
@@ -766,11 +802,15 @@ function rowChat(x){
   </div>`;
 }
 
+function bizFields(p){ return [p&&p.dienstleistung, p&&p.methode, p&&p.zielgruppe, p&&p.angebotssatz].filter(Boolean); }
+function bizLine(p){ return bizFields(p).join(" · "); }
 function rowMember(p){
   const online = state.onlineIds.has(p.id);
+  const biz = bizLine(p);
   return `<div class="row" id="mem-${cssId(p.id)}">
     <div class="av s44 ${online?'online':''}">${avatarHtml(p,'s44',true)}</div>
     <div class="meta"><div class="top"><span class="title">${esc(p.display_name)}</span>${nameBadges(p)}</div>
+    ${biz?`<div class="biz-line">${esc(biz)}</div>`:""}
     <div class="preview">${online?'<span style="color:var(--ok)">● Online</span>':'Tippen zum Schreiben'}</div></div>
   </div>`;
 }
@@ -1040,6 +1080,11 @@ function openProfile(){
   $("#profName").value = state.me.display_name;
   $("#profBadges").innerHTML = (state.me.badges&&state.me.badges.length) ? state.me.badges.map(function(b){var m=milestoneBy(b);return m?'<span class="badge-chip" title="'+escAttr(m.label)+'" style="font-size:1.4rem">'+m.emoji+'</span>':'';}).join("") : '<span style="font-size:.78rem;color:var(--muted)">Noch keine Badges — poste deinen ersten Erfolg!</span>';
   $("#visSw").classList.toggle("on", state.me.is_visible!==false);
+  // Business-Felder (aus Learning Suite, read-only)
+  $("#profBiz").innerHTML = BIZ_LABELS.map(function(pair){
+    var v = state.me[pair[0]];
+    return '<div class="biz-row"><span class="k">'+pair[1]+'</span><span class="v'+(v?'':' empty')+'">'+(v?esc(v):'nicht hinterlegt')+'</span></div>';
+  }).join("");
   // WhatsApp (privat, nicht aus DB lesbar -> Felder leer, Status aus localStorage)
   $("#waPhone").value=""; $("#waKey").value="";
   $("#waSw").classList.toggle("on", localStorage.getItem("dlc_wa_enabled")==="1");
