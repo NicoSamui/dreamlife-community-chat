@@ -452,6 +452,19 @@ label.fl{display:block;font-size:.74rem;font-weight:600;color:var(--muted);text-
     </div>
   </div>
 
+  <!-- Frühere Chats übernehmen (Legacy-Claim) -->
+  <div class="glass modal" id="legacyModal" style="display:none">
+    <div class="modal-head"><h2>Willkommen zurück 👋</h2></div>
+    <div class="modal-body">
+      <p class="note" id="legacyText"></p>
+      <p class="note" style="margin-top:8px;font-size:.72rem;color:var(--muted-2)">Nur du kannst Chats übernehmen, die zu deinem Namen gehören. Wenn dir die genannten Personen nichts sagen, tippe auf „Nein".</p>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-block" id="legacyNo">Nein, danke</button>
+        <button class="btn btn-primary btn-block" id="legacyYes">Ja, übernehmen</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Neue Gruppe -->
   <div class="glass modal" id="groupModal" style="display:none">
     <div class="modal-head"><h2>Neue Gruppe</h2></div>
@@ -673,6 +686,53 @@ async function startApp(){
   render();
   startRealtime();
   heartbeat();
+  maybeOfferLegacyClaim();
+}
+
+/* --- Frühere Chats (alte lokale ID) sicher übernehmen --- */
+async function maybeOfferLegacyClaim(){
+  try{
+    if(!state.me || String(state.me.id).startsWith("local-")) return;     // nur echte LS-IDs
+    const name = (state.me.display_name||"").trim();
+    if(!name) return;
+    // Alt-Profile (local-) mit exakt gleichem Namen
+    const { data:cands } = await db.from("profiles").select("id,display_name").like("id","local-%").ilike("display_name", name);
+    if(!cands || !cands.length) return;
+    // davon nur die mit echten Chats
+    const withChats=[];
+    for(const c of cands){
+      const { data:mem } = await db.from("conversation_members").select("conversation_id").eq("user_id", c.id).limit(1);
+      if(mem && mem.length) withChats.push(c);
+    }
+    if(withChats.length!==1) return;     // nur EINDEUTIGE Treffer -> nie fremde Chats
+    const old = withChats[0];
+    if(localStorage.getItem("dlc_legacy_skip_"+old.id)==="1") return;
+    // Chat-Partner zur Bestätigung sammeln
+    const { data:myMem } = await db.from("conversation_members").select("conversation_id").eq("user_id", old.id);
+    const convIds=(myMem||[]).map(r=>r.conversation_id);
+    let partners=[];
+    if(convIds.length){
+      const { data:others } = await db.from("conversation_members").select("user_id, profiles(display_name)").in("conversation_id", convIds).neq("user_id", old.id);
+      partners=[...new Set((others||[]).map(r=>(r.profiles&&r.profiles.display_name)||"").filter(Boolean))];
+    }
+    openLegacyModal(old, convIds.length, partners);
+  }catch(e){ /* Angebot ist optional – Fehler ignorieren */ }
+}
+function openLegacyModal(old, count, partners){
+  const who = partners.length ? partners.slice(0,6).map(esc).join(", ") : "anderen Mitgliedern";
+  $("#legacyText").innerHTML = `Wir haben <b>${count}</b> frühere ${count===1?"Unterhaltung":"Unterhaltungen"} für <b>${esc(state.me.display_name)}</b> gefunden — mit ${who}.<br>Sollen wir sie mit deinem Account verbinden?`;
+  $("#legacyYes").disabled=false;
+  $("#legacyYes").onclick = async ()=>{
+    $("#legacyYes").disabled=true;
+    const { error } = await db.rpc("claim_legacy_chats", { p_old: old.id, p_new: state.me.id });
+    if(error){ toast("Konnte nicht übernehmen: "+error.message); $("#legacyYes").disabled=false; return; }
+    closeModals();
+    toast("Deine früheren Chats sind wieder da. 🎉");
+    await Promise.all([ loadConversations(), loadDirectory() ]);
+    render();
+  };
+  $("#legacyNo").onclick = ()=>{ localStorage.setItem("dlc_legacy_skip_"+old.id,"1"); closeModals(); };
+  showModal("legacyModal");
 }
 
 function firstName(){
